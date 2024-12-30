@@ -17,7 +17,7 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh
 
-ENV BACKEND_URL=spring-backend-service
+ENV BACKEND_URL=localhost:8080
 
 EXPOSE 80
 CMD ["/docker-entrypoint.sh"]
