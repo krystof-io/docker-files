@@ -6,18 +6,25 @@ COPY . .
 RUN npm run build
 
 FROM nginx:alpine
+
+# Add nginx user and configure permissions
+RUN addgroup -g 2000 nginx-group && \
+    adduser -u 2000 -G nginx-group -s /bin/sh -D nginx-user && \
+    mkdir -p /tmp/nginx/cache /tmp/nginx/run && \
+    chown -R nginx-user:nginx-group /tmp/nginx
+
+# Install envsubst
 RUN apk add --no-cache gettext
 
+# Copy the built app
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf.template
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
-# Create entrypoint script using a separate RUN with explicit content
-RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
-    echo 'envsubst "\${BACKEND_URL}" < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf' >> /docker-entrypoint.sh && \
-    echo 'nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
-    chmod +x /docker-entrypoint.sh
+# Switch to non-root user
+USER 2000
 
 ENV BACKEND_URL=localhost:8080
+EXPOSE 8080
 
-EXPOSE 80
-CMD ["/docker-entrypoint.sh"]
+# Use NGINX's built-in template processing
+CMD ["sh", "-c", "envsubst '${BACKEND_URL}' < /etc/nginx/templates/default.conf.template > /tmp/nginx/nginx.conf && nginx -c /tmp/nginx/nginx.conf -g 'daemon off;'"]
